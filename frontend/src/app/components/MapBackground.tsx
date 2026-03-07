@@ -1,4 +1,3 @@
-import mapImage from "figma:asset/014d875af8db646afbd1600db3f6aab40fb04d5c.png";
 import { MapPin, Home, Coffee } from "lucide-react";
 
 const pinColor = "rgb(100, 116, 139, 0.45)";
@@ -28,7 +27,7 @@ export function MapBackground() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
       <img
-        src={mapImage}
+        src="/src/imports/dark-city-grid-background-vector-37627554.jpg.svg"
         alt=""
         className="w-full h-full object-cover opacity-40"
       />
