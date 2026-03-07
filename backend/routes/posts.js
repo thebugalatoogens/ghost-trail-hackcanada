@@ -8,10 +8,10 @@ router.post("/", async (req,res)=>{
   const { userId, caption, location, timestamp } = req.body
   let coords = null
   if(location){
-      coords = await geocodeLocation(location)
+      coords = await geocodeLocation(location) 
     }
-console.log("Location:", location)
-console.log("Coordinates:", coords)
+//console.log("Location:", location)
+//console.log("Coordinates:", coords)
   const post = new Post({
     userId,
     caption,
