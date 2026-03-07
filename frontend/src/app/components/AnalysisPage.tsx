@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import {
   Shield,
@@ -16,6 +16,8 @@ import {
   Link,
   Tag,
 } from "lucide-react";
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
 
 type Severity = "high" | "medium" | "low";
 
@@ -169,6 +171,102 @@ const severityConfig: Record<Severity, { label: string; color: string; bg: strin
   low: { label: "Low", color: "text-slate-400", bg: "bg-slate-400/10" },
 };
 
+// Hardcoded geotagged locations around Spur Innovation Centre, Waterloo
+const SPUR_LAT = 43.4723;
+const SPUR_LNG = -80.5449;
+
+const geotaggedLocations = [
+  { lat: SPUR_LAT, lng: SPUR_LNG, label: "SPUR Innovation Centre", severity: "high" as Severity, count: 8 },
+  { lat: 43.4701, lng: -80.5412, label: "Nearby Café", severity: "medium" as Severity, count: 3 },
+  { lat: 43.4748, lng: -80.5478, label: "Gym", severity: "low" as Severity, count: 5 },
+  { lat: 43.4689, lng: -80.5501, label: "Home Area", severity: "high" as Severity, count: 12 },
+  { lat: 43.4762, lng: -80.5388, label: "Work Area", severity: "high" as Severity, count: 9 },
+  { lat: 43.4715, lng: -80.5530, label: "Restaurant", severity: "low" as Severity, count: 2 },
+];
+
+const markerColor: Record<Severity, string> = {
+  high: "#ef4444",
+  medium: "#f59e0b",
+  low: "#64748b",
+};
+
+function MapStyler() {
+  const map = useMap();
+  useEffect(() => {
+    // Dark tile layer is handled via TileLayer, just disable zoom control default position
+    map.zoomControl.setPosition("bottomright");
+  }, [map]);
+  return null;
+}
+
+function LeafletMap() {
+  return (
+    <div
+      className="border border-slate-800/60 overflow-hidden relative"
+      style={{ borderRadius: "2px", height: "380px" }}
+    >
+      <MapContainer
+        center={[SPUR_LAT, SPUR_LNG]}
+        zoom={15}
+        style={{ height: "100%", width: "100%", background: "#0d1424" }}
+        zoomControl={true}
+        scrollWheelZoom={false}
+      >
+        <TileLayer
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+        />
+        <MapStyler />
+        {geotaggedLocations.map((loc, i) => (
+          <CircleMarker
+            key={i}
+            center={[loc.lat, loc.lng]}
+            radius={loc.count + 6}
+            pathOptions={{
+              color: markerColor[loc.severity],
+              fillColor: markerColor[loc.severity],
+              fillOpacity: 0.35,
+              weight: 1.5,
+            }}
+          >
+            <Popup>
+              <div style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", color: "#cbd5e1" }}>
+                <strong style={{ color: markerColor[loc.severity] }}>{loc.label}</strong>
+                <br />
+                {loc.count} posts tagged here
+              </div>
+            </Popup>
+          </CircleMarker>
+        ))}
+      </MapContainer>
+
+      {/* Legend */}
+      <div
+        className="absolute bottom-4 left-4 z-[1000] bg-[#0c1220]/90 border border-slate-800/60 p-3"
+        style={{ borderRadius: "2px" }}
+      >
+        <p className="text-slate-600 uppercase tracking-[0.15em] mb-2" style={{ fontSize: "9px" }}>
+          Identified Locations
+        </p>
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 bg-red-400 block" style={{ borderRadius: "50%" }} />
+            <span className="text-slate-400" style={{ fontSize: "11px" }}>High frequency (home / work)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 bg-amber-400 block" style={{ borderRadius: "50%" }} />
+            <span className="text-slate-400" style={{ fontSize: "11px" }}>Moderate frequency</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 bg-slate-500 block" style={{ borderRadius: "50%" }} />
+            <span className="text-slate-400" style={{ fontSize: "11px" }}>Occasional</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FindingCard({ finding }: { finding: Finding }) {
   const [expanded, setExpanded] = useState(false);
   const sev = severityConfig[finding.severity];
@@ -207,28 +305,18 @@ function FindingCard({ finding }: { finding: Finding }) {
       {expanded && (
         <div className="px-5 pb-5 pt-0 ml-8">
           <div className="border-t border-slate-800/40 pt-4">
-            <p
-              className="text-slate-600 uppercase tracking-[0.15em] mb-3"
-              style={{ fontSize: "10px" }}
-            >
+            <p className="text-slate-600 uppercase tracking-[0.15em] mb-3" style={{ fontSize: "10px" }}>
               Details
             </p>
             <ul className="space-y-2 mb-5">
               {finding.details.map((detail, i) => (
-                <li
-                  key={i}
-                  className="text-slate-400 flex items-start gap-2"
-                  style={{ fontSize: "13px", lineHeight: 1.6 }}
-                >
+                <li key={i} className="text-slate-400 flex items-start gap-2" style={{ fontSize: "13px", lineHeight: 1.6 }}>
                   <span className="text-slate-700 mt-2 w-1 h-1 bg-slate-600 shrink-0 block" style={{ borderRadius: "50%" }} />
                   {detail}
                 </li>
               ))}
             </ul>
-            <p
-              className="text-slate-600 uppercase tracking-[0.15em] mb-2"
-              style={{ fontSize: "10px" }}
-            >
+            <p className="text-slate-600 uppercase tracking-[0.15em] mb-2" style={{ fontSize: "10px" }}>
               Recommendation
             </p>
             <p className="text-slate-300" style={{ fontSize: "13px", lineHeight: 1.6 }}>
@@ -237,135 +325,6 @@ function FindingCard({ finding }: { finding: Finding }) {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function MockMap() {
-  return (
-    <div className="border border-slate-800/60 bg-[#0d1424] overflow-hidden relative" style={{ borderRadius: "2px" }}>
-      <svg
-        viewBox="0 0 800 400"
-        className="w-full"
-        xmlns="http://www.w3.org/2000/svg"
-        style={{ display: "block" }}
-      >
-        {/* Background grid */}
-        <defs>
-          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" strokeWidth="0.5" opacity="0.4" />
-          </pattern>
-        </defs>
-        <rect width="800" height="400" fill="#0d1424" />
-        <rect width="800" height="400" fill="url(#grid)" />
-
-        {/* Roads */}
-        <g stroke="#1e293b" strokeWidth="2" fill="none">
-          <line x1="0" y1="200" x2="800" y2="200" />
-          <line x1="400" y1="0" x2="400" y2="400" />
-          <line x1="0" y1="100" x2="800" y2="100" strokeWidth="1" />
-          <line x1="0" y1="300" x2="800" y2="300" strokeWidth="1" />
-          <line x1="200" y1="0" x2="200" y2="400" strokeWidth="1" />
-          <line x1="600" y1="0" x2="600" y2="400" strokeWidth="1" />
-          <path d="M100 50 Q300 150 500 80 Q700 10 750 120" strokeWidth="1.5" />
-          <path d="M50 350 Q250 280 450 320 Q650 360 780 300" strokeWidth="1.5" />
-        </g>
-
-        {/* Blocks */}
-        <g fill="#151d2e" stroke="none" opacity="0.6">
-          <rect x="220" y="110" width="160" height="70" />
-          <rect x="420" y="110" width="160" height="70" />
-          <rect x="220" y="210" width="160" height="70" />
-          <rect x="420" y="210" width="160" height="70" />
-          <rect x="30" y="210" width="150" height="70" />
-          <rect x="620" y="210" width="150" height="70" />
-          <rect x="30" y="110" width="150" height="70" />
-          <rect x="620" y="110" width="150" height="70" />
-        </g>
-
-        {/* Connecting dashed path between points */}
-        <path
-          d="M180 170 Q250 200 300 250 Q360 310 500 260 Q580 230 620 160"
-          stroke="#ef4444"
-          strokeWidth="1"
-          fill="none"
-          strokeDasharray="6 4"
-          opacity="0.4"
-        />
-
-        {/* Heatmap zones */}
-        <circle cx="180" cy="170" r="50" fill="#ef4444" opacity="0.06" />
-        <circle cx="180" cy="170" r="30" fill="#ef4444" opacity="0.08" />
-        <circle cx="620" cy="160" r="45" fill="#ef4444" opacity="0.06" />
-        <circle cx="620" cy="160" r="25" fill="#ef4444" opacity="0.08" />
-        <circle cx="500" cy="260" r="35" fill="#f59e0b" opacity="0.06" />
-        <circle cx="500" cy="260" r="20" fill="#f59e0b" opacity="0.08" />
-
-        {/* Location pins */}
-        <g>
-          {/* Home */}
-          <g transform="translate(180, 158)">
-            <path d="M0-16 C-6-16-10-12-10-6 C-10 2 0 12 0 12 S10 2 10-6 C10-12 6-16 0-16Z" fill="#ef4444" opacity="0.9" />
-            <path d="M-3-8 L0-11 L3-8 L3-4 L-3-4Z" fill="#0d1424" />
-          </g>
-          {/* Work */}
-          <g transform="translate(620, 148)">
-            <path d="M0-16 C-6-16-10-12-10-6 C-10 2 0 12 0 12 S10 2 10-6 C10-12 6-16 0-16Z" fill="#ef4444" opacity="0.9" />
-            <rect x="-3" y="-10" width="6" height="5" fill="#0d1424" />
-          </g>
-          {/* Cafe */}
-          <g transform="translate(500, 248)">
-            <path d="M0-16 C-6-16-10-12-10-6 C-10 2 0 12 0 12 S10 2 10-6 C10-12 6-16 0-16Z" fill="#f59e0b" opacity="0.9" />
-            <circle cx="0" cy="-6" r="3" fill="#0d1424" />
-          </g>
-          {/* Gym */}
-          <g transform="translate(300, 240)">
-            <path d="M0-14 C-5-14-8-10-8-5 C-8 1 0 10 0 10 S8 1 8-5 C8-10 5-14 0-14Z" fill="#64748b" opacity="0.7" />
-            <circle cx="0" cy="-5" r="2.5" fill="#0d1424" />
-          </g>
-        </g>
-
-        {/* Labels */}
-        <text x="180" y="186" textAnchor="middle" fill="#ef4444" fontSize="9" fontFamily="Inter, sans-serif" opacity="0.7">
-          HOME AREA
-        </text>
-        <text x="620" y="176" textAnchor="middle" fill="#ef4444" fontSize="9" fontFamily="Inter, sans-serif" opacity="0.7">
-          WORK AREA
-        </text>
-        <text x="500" y="276" textAnchor="middle" fill="#f59e0b" fontSize="9" fontFamily="Inter, sans-serif" opacity="0.7">
-          FREQUENT
-        </text>
-      </svg>
-
-      {/* Legend overlay */}
-      <div
-        className="absolute bottom-4 left-4 bg-[#0c1220]/90 border border-slate-800/60 p-3"
-        style={{ borderRadius: "2px" }}
-      >
-        <p className="text-slate-600 uppercase tracking-[0.15em] mb-2" style={{ fontSize: "9px" }}>
-          Identified Locations
-        </p>
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 bg-red-400 block" style={{ borderRadius: "50%" }} />
-            <span className="text-slate-400" style={{ fontSize: "11px" }}>
-              High frequency (home / work)
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 bg-amber-400 block" style={{ borderRadius: "50%" }} />
-            <span className="text-slate-400" style={{ fontSize: "11px" }}>
-              Moderate frequency
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 bg-slate-500 block" style={{ borderRadius: "50%" }} />
-            <span className="text-slate-400" style={{ fontSize: "11px" }}>
-              Occasional
-            </span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
@@ -384,10 +343,7 @@ export function AnalysisPage() {
       : findings.filter((f) => f.severity === activeFilter);
 
   return (
-    <div
-      className="min-h-screen bg-[#0c1220] text-white"
-      style={{ fontFamily: "'Inter', sans-serif" }}
-    >
+    <div className="min-h-screen bg-[#0c1220] text-white" style={{ fontFamily: "'Inter', sans-serif" }}>
       {/* Top bar */}
       <nav className="flex items-center justify-between px-8 py-5 border-b border-slate-800/60">
         <div className="flex items-center gap-6">
@@ -418,26 +374,17 @@ export function AnalysisPage() {
       <div className="max-w-5xl mx-auto px-8 py-10">
         {/* Header */}
         <div className="mb-10">
-          <p
-            className="text-slate-600 uppercase tracking-[0.25em] mb-2"
-            style={{ fontSize: "11px" }}
-          >
+          <p className="text-slate-600 uppercase tracking-[0.25em] mb-2" style={{ fontSize: "11px" }}>
             Privacy Report
           </p>
           <h1
             className="text-slate-100 mb-3"
-            style={{
-              fontFamily: "'Space Grotesk', sans-serif",
-              fontSize: "28px",
-              fontWeight: 600,
-              letterSpacing: "-0.01em",
-            }}
+            style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "28px", fontWeight: 600, letterSpacing: "-0.01em" }}
           >
             Your exposure overview
           </h1>
           <p className="text-slate-500" style={{ fontSize: "14px", lineHeight: 1.7 }}>
-            We identified {findings.length} areas where your personal
-            information may be accessible to someone you don't know.
+            We identified {findings.length} areas where your personal information may be accessible to someone you don't know.
           </p>
         </div>
 
@@ -446,86 +393,44 @@ export function AnalysisPage() {
           <div className="bg-[#0c1220] p-6">
             <div className="flex items-center gap-2 mb-3">
               <AlertTriangle className="w-3.5 h-3.5 text-red-400" strokeWidth={1.5} />
-              <span
-                className="text-slate-600 uppercase tracking-[0.15em]"
-                style={{ fontSize: "10px" }}
-              >
-                High Risk
-              </span>
+              <span className="text-slate-600 uppercase tracking-[0.15em]" style={{ fontSize: "10px" }}>High Risk</span>
             </div>
-            <span
-              className="text-red-400"
-              style={{
-                fontFamily: "'Space Grotesk', sans-serif",
-                fontSize: "36px",
-                fontWeight: 600,
-              }}
-            >
+            <span className="text-red-400" style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "36px", fontWeight: 600 }}>
               {highCount}
             </span>
           </div>
           <div className="bg-[#0c1220] p-6">
             <div className="flex items-center gap-2 mb-3">
               <Eye className="w-3.5 h-3.5 text-amber-400" strokeWidth={1.5} />
-              <span
-                className="text-slate-600 uppercase tracking-[0.15em]"
-                style={{ fontSize: "10px" }}
-              >
-                Medium Risk
-              </span>
+              <span className="text-slate-600 uppercase tracking-[0.15em]" style={{ fontSize: "10px" }}>Medium Risk</span>
             </div>
-            <span
-              className="text-amber-400"
-              style={{
-                fontFamily: "'Space Grotesk', sans-serif",
-                fontSize: "36px",
-                fontWeight: 600,
-              }}
-            >
+            <span className="text-amber-400" style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "36px", fontWeight: 600 }}>
               {medCount}
             </span>
           </div>
           <div className="bg-[#0c1220] p-6">
             <div className="flex items-center gap-2 mb-3">
               <Shield className="w-3.5 h-3.5 text-slate-400" strokeWidth={1.5} />
-              <span
-                className="text-slate-600 uppercase tracking-[0.15em]"
-                style={{ fontSize: "10px" }}
-              >
-                Low Risk
-              </span>
+              <span className="text-slate-600 uppercase tracking-[0.15em]" style={{ fontSize: "10px" }}>Low Risk</span>
             </div>
-            <span
-              className="text-slate-400"
-              style={{
-                fontFamily: "'Space Grotesk', sans-serif",
-                fontSize: "36px",
-                fontWeight: 600,
-              }}
-            >
+            <span className="text-slate-400" style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "36px", fontWeight: 600 }}>
               {lowCount}
             </span>
           </div>
         </div>
 
-        {/* Map */}
+        {/* Leaflet Map */}
         <div className="mb-10">
-          <p
-            className="text-slate-600 uppercase tracking-[0.25em] mb-4"
-            style={{ fontSize: "11px" }}
-          >
+          <p className="text-slate-600 uppercase tracking-[0.25em] mb-4" style={{ fontSize: "11px" }}>
             Location Exposure Map
           </p>
-          <MockMap />
+          <LeafletMap />
         </div>
 
         {/* Findings list */}
         <div className="mb-10">
           <div className="flex items-center justify-between mb-4">
-            <p
-              className="text-slate-600 uppercase tracking-[0.25em]"
-              style={{ fontSize: "11px" }}
-            >
+            <p className="text-slate-600 uppercase tracking-[0.25em]" style={{ fontSize: "11px" }}>
               Findings
             </p>
             <div className="flex items-center gap-1">
