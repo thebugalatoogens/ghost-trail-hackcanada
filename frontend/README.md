@@ -1,4 +1,4 @@
-# snowbuddy
+# frontend
 
 A Cloudinary React + Vite + TypeScript project scaffolded with [create-cloudinary-react](https://github.com/cloudinary-devs/create-cloudinary-react).
 
