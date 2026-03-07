@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
 import {
   Shield,
   ArrowLeft,
@@ -15,9 +17,9 @@ import {
   Eye,
   Link,
   Tag,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
 
 type Severity = "high" | "medium" | "low";
 
@@ -171,17 +173,67 @@ const severityConfig: Record<Severity, { label: string; color: string; bg: strin
   low: { label: "Low", color: "text-slate-400", bg: "bg-slate-400/10" },
 };
 
-// Hardcoded geotagged locations around Spur Innovation Centre, Waterloo
-const SPUR_LAT = 43.4723;
-const SPUR_LNG = -80.5449;
+const SPUR_LAT = 43.4725;
+const SPUR_LNG = -80.5423;
+
+// HARDCODED SAMPLE IMAGES - Replace with real images from Instagram ZIP
+const sampleImages = [
+  "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=400",
+  "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=400",
+  "https://images.unsplash.com/photo-1497366216548-37526070297c?w=400",
+  "https://images.unsplash.com/photo-1497215842964-222b430dc094?w=400",
+  "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400",
+];
 
 const geotaggedLocations = [
-  { lat: SPUR_LAT, lng: SPUR_LNG, label: "SPUR Innovation Centre", severity: "high" as Severity, count: 8 },
-  { lat: 43.4701, lng: -80.5412, label: "Nearby Café", severity: "medium" as Severity, count: 3 },
-  { lat: 43.4748, lng: -80.5478, label: "Gym", severity: "low" as Severity, count: 5 },
-  { lat: 43.4689, lng: -80.5501, label: "Home Area", severity: "high" as Severity, count: 12 },
-  { lat: 43.4762, lng: -80.5388, label: "Work Area", severity: "high" as Severity, count: 9 },
-  { lat: 43.4715, lng: -80.5530, label: "Restaurant", severity: "low" as Severity, count: 2 },
+  { 
+    lat: SPUR_LAT, 
+    lng: SPUR_LNG, 
+    label: "SPUR Innovation Centre", 
+    severity: "high" as Severity, 
+    count: 8,
+    images: [sampleImages[0], sampleImages[1], sampleImages[2]]
+  },
+  { 
+    lat: 43.4701, 
+    lng: -80.5412, 
+    label: "Nearby Café", 
+    severity: "medium" as Severity, 
+    count: 3,
+    images: [sampleImages[3]]
+  },
+  { 
+    lat: 43.4748, 
+    lng: -80.5478, 
+    label: "Gym", 
+    severity: "low" as Severity, 
+    count: 5,
+    images: [sampleImages[4], sampleImages[0]]
+  },
+  { 
+    lat: 43.4689, 
+    lng: -80.5501, 
+    label: "Home Area", 
+    severity: "high" as Severity, 
+    count: 12,
+    images: [sampleImages[1], sampleImages[2], sampleImages[3], sampleImages[4]]
+  },
+  { 
+    lat: 43.4762, 
+    lng: -80.5388, 
+    label: "Work Area", 
+    severity: "high" as Severity, 
+    count: 9,
+    images: [sampleImages[2], sampleImages[4]]
+  },
+  { 
+    lat: 43.4715, 
+    lng: -80.5530, 
+    label: "Restaurant", 
+    severity: "low" as Severity, 
+    count: 2,
+    images: [sampleImages[3]]
+  },
 ];
 
 const markerColor: Record<Severity, string> = {
@@ -193,10 +245,66 @@ const markerColor: Record<Severity, string> = {
 function MapStyler() {
   const map = useMap();
   useEffect(() => {
-    // Dark tile layer is handled via TileLayer, just disable zoom control default position
     map.zoomControl.setPosition("bottomright");
   }, [map]);
   return null;
+}
+
+// Image carousel component for popup
+function ImageCarousel({ images }: { images: string[] }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const nextImage = () => {
+    setCurrentIndex((prev) => (prev + 1) % images.length);
+  };
+
+  const prevImage = () => {
+    setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
+
+  if (!images || images.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="relative">
+      <img
+        src={images[currentIndex]}
+        alt={`Location photo ${currentIndex + 1}`}
+        className="w-full h-32 object-cover rounded"
+        style={{ backgroundColor: "#1e293b" }}
+      />
+      
+      {images.length > 1 && (
+        <>
+          {/* Navigation buttons */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              prevImage();
+            }}
+            className="absolute left-1 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 rounded-full p-1 transition-colors"
+          >
+            <ChevronLeft size={16} color="white" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              nextImage();
+            }}
+            className="absolute right-1 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 rounded-full p-1 transition-colors"
+          >
+            <ChevronRight size={16} color="white" />
+          </button>
+
+          {/* Image counter */}
+          <div className="absolute bottom-1 right-1 bg-black/60 px-2 py-0.5 rounded text-xs text-white">
+            {currentIndex + 1} / {images.length}
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 function LeafletMap() {
@@ -229,11 +337,23 @@ function LeafletMap() {
               weight: 1.5,
             }}
           >
-            <Popup>
+            <Popup maxWidth={250} minWidth={200}>
               <div style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", color: "#cbd5e1" }}>
-                <strong style={{ color: markerColor[loc.severity] }}>{loc.label}</strong>
+                {/* Images */}
+                {loc.images && loc.images.length > 0 && (
+                  <div className="mb-2">
+                    <ImageCarousel images={loc.images} />
+                  </div>
+                )}
+                
+                {/* Location info */}
+                <strong style={{ color: markerColor[loc.severity], fontSize: "13px" }}>
+                  {loc.label}
+                </strong>
                 <br />
-                {loc.count} posts tagged here
+                <span style={{ color: "#94a3b8", fontSize: "11px" }}>
+                  {loc.count} posts tagged here
+                </span>
               </div>
             </Popup>
           </CircleMarker>
@@ -343,7 +463,10 @@ export function AnalysisPage() {
       : findings.filter((f) => f.severity === activeFilter);
 
   return (
-    <div className="min-h-screen bg-[#0c1220] text-white" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div
+      className="min-h-screen bg-[#0c1220] text-white"
+      style={{ fontFamily: "'Inter', sans-serif" }}
+    >
       {/* Top bar */}
       <nav className="flex items-center justify-between px-8 py-5 border-b border-slate-800/60">
         <div className="flex items-center gap-6">
@@ -461,9 +584,7 @@ export function AnalysisPage() {
         {/* Footer note */}
         <div className="border-t border-slate-800/40 pt-6 pb-12">
           <p className="text-slate-600" style={{ fontSize: "12px", lineHeight: 1.7 }}>
-            This analysis was performed entirely in your browser. No data was
-            transmitted to external servers. Ghost Trail does not store, collect,
-            or share your personal information.
+            This analysis was performed entirely in your browser. No data was transmitted to external servers. Ghost Trail does not store, collect, or share your personal information.
           </p>
         </div>
       </div>
