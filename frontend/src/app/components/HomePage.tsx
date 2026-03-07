@@ -80,7 +80,7 @@ export function HomePage() {
         {/* Nav */}
         <nav className="absolute top-0 left-0 right-0 flex items-center justify-between px-8 py-6 z-10">
           <div className="flex items-center gap-2.5">
-            <Shield className="w-5 h-5 text-slate-400" strokeWidth={1.5} />
+            <img src="/GhostTrailLogo.svg" alt="Ghost Trail" className="w-5 h-5" />
             <span
               className="tracking-[0.2em] text-slate-300 uppercase"
               style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "13px", letterSpacing: "0.2em" }}
@@ -319,7 +319,7 @@ export function HomePage() {
       <footer className="border-t border-slate-800/60 bg-[#0a0f1a] px-8 py-8">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Shield className="w-4 h-4 text-slate-700" strokeWidth={1.5} />
+            <img src="/GhostTrailLogo.svg" alt="Ghost Trail" className="w-5 h-5" />
             <span
               className="text-slate-700 uppercase tracking-[0.15em]"
               style={{ fontSize: "11px" }}

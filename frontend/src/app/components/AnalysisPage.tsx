@@ -3,7 +3,6 @@ import { useNavigate } from "react-router";
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import {
-  Shield,
   ArrowLeft,
   MapPin,
   Clock,
@@ -480,7 +479,7 @@ export function AnalysisPage() {
           </button>
           <div className="w-px h-4 bg-slate-800" />
           <div className="flex items-center gap-2">
-            <Shield className="w-4 h-4 text-slate-500" strokeWidth={1.5} />
+            <img src="/GhostTrailLogo.svg" alt="Ghost Trail" className="w-5 h-5" />
             <span
               className="text-slate-400 uppercase tracking-[0.15em]"
               style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "12px" }}
@@ -533,7 +532,7 @@ export function AnalysisPage() {
           </div>
           <div className="bg-[#0c1220] p-6">
             <div className="flex items-center gap-2 mb-3">
-              <Shield className="w-3.5 h-3.5 text-slate-400" strokeWidth={1.5} />
+              <img src="/GhostTrailLogo.svg" alt="Ghost Trail" className="w-5 h-5" />
               <span className="text-slate-600 uppercase tracking-[0.15em]" style={{ fontSize: "10px" }}>Low Risk</span>
             </div>
             <span className="text-slate-400" style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "36px", fontWeight: 600 }}>
