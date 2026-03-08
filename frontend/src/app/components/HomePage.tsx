@@ -32,6 +32,15 @@ export function HomePage() {
                         zip.file("posts.json") ||
                         zip.file("your_instagram_activity/posts/posts_1.json");
         
+        // Handle Mac re-zipped files with extra folder layer
+        if (!postsFile) {
+          const files = Object.keys(zip.files);
+          const postsPath = files.find(f => f.endsWith('posts_1.json') || f.endsWith('posts.json'));
+          if (postsPath) {
+            postsFile = zip.file(postsPath);
+          }
+        }
+        
         if (!postsFile) {
           throw new Error("Could not find posts.json in ZIP file. Make sure you uploaded an Instagram data export.");
         }
@@ -55,31 +64,77 @@ export function HomePage() {
           
           setProgress(`Processing post ${i + 1}/${posts.length}...`);
           
-          // Extract location
+          // Extract location (optional - backend can geocode from photo tags)
           const locationName = post.location?.name || 
                               post.title?.match(/at (.+)/)?.[1] || 
                               null;
-          
-          // Only send if has location
-          if (!locationName) continue;
           
           // Extract timestamp
           const timestamp = post.media?.[0]?.creation_timestamp 
             ? new Date(post.media[0].creation_timestamp * 1000)
             : new Date(post.creation_timestamp * 1000);
           
+          // NEW: Extract photos from ZIP
+          const photos = [];
+          if (post.media && post.media.length > 0) {
+            for (const media of post.media) {
+              if (media.uri) {
+                // Only process image files (skip .mp4, .heic for now)
+                const isImage = media.uri.match(/\.(jpg|jpeg|png|gif)$/i);
+                
+                if (isImage) {
+                  const mediaFile = zip.file(media.uri);
+                  if (mediaFile) {
+                    try {
+                      const mediaBlob = await mediaFile.async("blob");
+                      photos.push({
+                        blob: mediaBlob,
+                        filename: media.uri.split('/').pop() || 'photo.jpg'
+                      });
+                    } catch (err) {
+                      console.warn(`Failed to extract photo ${media.uri}:`, err);
+                    }
+                  }
+                }
+              }
+            }
+          }
+          
+          // Skip if no location AND no photos (backend needs at least one to geocode)
+          if (!locationName && photos.length === 0) continue;
+          
           // Send to backend
           try {
-            await fetch('http://localhost:3000/posts', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                userId: userId,
-                caption: post.title || "",
-                location: locationName,
-                timestamp: timestamp.toISOString()
-              })
-            });
+            // Use FormData if we have photos, otherwise use JSON
+            if (photos.length > 0) {
+              const formData = new FormData();
+              formData.append('userId', userId);
+              formData.append('caption', post.title || "");
+              formData.append('location', locationName);
+              formData.append('timestamp', timestamp.toISOString());
+              
+              // Add photos to FormData
+              photos.forEach((photo) => {
+                formData.append('photos', photo.blob, photo.filename);
+              });
+              
+              await fetch('http://localhost:3000/posts', {
+                method: 'POST',
+                body: formData // Send as FormData with photos
+              });
+            } else {
+              // No photos - send as JSON (keeps backward compatibility)
+              await fetch('http://localhost:3000/posts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  userId: userId,
+                  caption: post.title || "",
+                  location: locationName,
+                  timestamp: timestamp.toISOString()
+                })
+              });
+            }
             successCount++;
           } catch (err) {
             console.error('Failed to send post:', err);

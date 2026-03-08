@@ -481,14 +481,25 @@ useEffect(() => {
       if (data.frequentLocations && data.frequentLocations.length > 0) {
         const mappedLocations = data.frequentLocations
           .filter((loc: any) => loc.latitude && loc.longitude)
-          .map((loc: any, i: number) => ({
-            location: loc.location,
-            latitude: loc.latitude,
-            longitude: loc.longitude,
-            visits: loc.visits,
-            severity: getSeverity(loc.visits),
-            images: [sampleImages[i % sampleImages.length]]
-          }));
+          .map((loc: any, i: number) => {
+            // Log what we're mapping
+            console.log('Mapping location:', loc.location, 'URIs:', loc.uris);
+            
+            return {
+              location: loc.location,
+              latitude: loc.latitude,
+              longitude: loc.longitude,
+              visits: loc.visits,
+              severity: getSeverity(loc.visits),
+              // USE REAL CLOUDINARY IMAGES from backend
+              images: loc.uris && loc.uris.length > 0 
+                ? loc.uris 
+                : [sampleImages[i % sampleImages.length]]
+            };
+          });
+        
+        // 🔍 DEBUG: Log final result
+        console.log('Final mapped locations:', mappedLocations);
         
         setLocations(mappedLocations);
       } else {

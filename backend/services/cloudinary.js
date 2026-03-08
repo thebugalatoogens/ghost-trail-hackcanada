@@ -5,7 +5,6 @@ console.log("API key loaded?", !!process.env.CLOUDINARY_API_KEY);
 console.log("API secret loaded?", !!process.env.CLOUDINARY_API_SECRET);
 
 const cloudinary = require("cloudinary").v2;
-const path = require("path");
 
 // configure
 cloudinary.config({
@@ -14,29 +13,52 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-
 const tagCache = {};
 
-async function uploadAndTagImage(imageUrl, minConfidence=0.7) {
-  if (tagCache[imageUrl]) {
-    console.log("Using cached tags for:", imageUrl);
-    return { autoTags: tagCache[imageUrl] };
+async function uploadAndTagImage(buffer, filename, minConfidence = 0.7) {
+  // Cache key based on filename
+  const cacheKey = filename;
+  
+  if (tagCache[cacheKey]) {
+    console.log("Using cached tags for:", filename);
+    return { url: tagCache[cacheKey].url, autoTags: tagCache[cacheKey].tags };
   }
 
-  try {
-    const result = await cloudinary.uploader.upload(imageUrl, { categorization: "aws_rek_tagging", 
-    auto_tagging: 0.7 });
-    console.log(result);
-    const autoTags = result.tags || []
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: 'ghost-trail',
+        resource_type: 'image',
+        categorization: 'aws_rek_tagging',
+        auto_tagging: minConfidence
+      },
+      (error, result) => {
+        if (error) {
+          console.error("Error uploading to Cloudinary:", error);
+          return reject(error);
+        }
 
-    console.log(autoTags);
+        console.log("Cloudinary upload successful:", result.secure_url);
+        
+        const autoTags = result.tags || [];
+        console.log("Auto tags:", autoTags);
 
-    tagCache[imageUrl] = autoTags;
+        // Cache result
+        tagCache[cacheKey] = {
+          url: result.secure_url,
+          tags: autoTags
+        };
 
-    return { autoTags }
-  } catch (err) {
-    console.error("Error uploading image:", err)
-    throw err
-  }
+        resolve({
+          url: result.secure_url,
+          autoTags: autoTags
+        });
+      }
+    );
+
+    // Write buffer to stream
+    uploadStream.end(buffer);
+  });
 }
+
 module.exports = { uploadAndTagImage }

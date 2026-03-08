@@ -58,7 +58,7 @@ async function geocodeLocation(input) {
       locRaw
     )}&format=json&limit=1`;
 
-    await sleep(1100);
+    await sleep(2000);
 
     try {
       const response = await axios.get(url, {
@@ -82,7 +82,7 @@ async function geocodeLocation(input) {
         if (err.response?.status === 429) {
       console.warn(`Rate limit hit for "${locRaw}", skipping to next tag...`);
       locationCache[key] = null; // prevent retrying this tag immediately
-      await sleep(2000); // give extra pause
+      await sleep(5000); // give extra pause
       continue; // move to next tag instead of retrying the same one
     }
       console.error(`Error geocoding "${locRaw}":`, err);
