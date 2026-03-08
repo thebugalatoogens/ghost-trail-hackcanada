@@ -23,12 +23,18 @@ router.post("/", upload.array('photos', 10), async (req, res) => {
       const firstPhoto = req.files[0]
       console.log('Uploading photo to Cloudinary:', firstPhoto.originalname)
       
-      const cloudResult = await uploadAndTagImage(firstPhoto.buffer, firstPhoto.originalname)
-      cloudinaryUrl = cloudResult.url
-      autoTags = cloudResult.autoTags
-      
-      console.log('Cloudinary URL:', cloudinaryUrl)
-      console.log('Auto tags:', autoTags)
+      try {
+        // TRY to upload, but don't fail if it errors
+        const cloudResult = await uploadAndTagImage(firstPhoto.buffer, firstPhoto.originalname)
+        cloudinaryUrl = cloudResult.url
+        autoTags = cloudResult.autoTags
+        
+        console.log('Cloudinary URL:', cloudinaryUrl)
+        console.log('Auto tags:', autoTags)
+      } catch (cloudError) {
+        // Log error but continue 
+        console.warn('Cloudinary upload failed, continuing without photo:', cloudError.message)
+      }
     }
     
     // Geocode from location name or auto tags
@@ -37,20 +43,26 @@ router.post("/", upload.array('photos', 10), async (req, res) => {
     console.log(`Location: ${location}`)
     console.log(`Coordinates:`, coords)
 
-    const post = new Post({
-      userId,
-      caption,
-      location: location ? location.toLowerCase().trim() : null,
-      latitude: coords ? coords.latitude : null,
-      longitude: coords ? coords.longitude : null,
-      timestamp,
-      autoTags,
-      media: cloudinaryUrl
-    })
+    // SAVE POST EVEN IF NO PHOTO - as long as we have coordinates
+    if (coords) {
+      const post = new Post({
+        userId,
+        caption,
+        location: location ? location.toLowerCase().trim() : (autoTags[0] || null),
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        timestamp,
+        autoTags,
+        media: cloudinaryUrl  // Will be null if upload failed
+      })
 
-    await post.save()
-
-    res.json(post)
+      await post.save()
+      res.json(post)
+    } else {
+      // No coordinates - skip this post but don't crash
+      console.warn('No coordinates found, skipping post')
+      res.status(400).json({ error: 'Could not geocode location' })
+    }
   } catch (error) {
     console.error('Error creating post:', error)
     res.status(500).json({ error: error.message })

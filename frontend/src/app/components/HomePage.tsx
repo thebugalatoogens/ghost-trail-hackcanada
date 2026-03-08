@@ -65,16 +65,14 @@ export function HomePage() {
           setProgress(`Processing post ${i + 1}/${posts.length}...`);
           
           // Extract location (optional - backend can geocode from photo tags)
-          const locationName = post.location?.name || 
-                              post.title?.match(/at (.+)/)?.[1] || 
-                              null;
+          const locationName = post.location?.name || null;  // Don't try to extract from title
           
           // Extract timestamp
           const timestamp = post.media?.[0]?.creation_timestamp 
             ? new Date(post.media[0].creation_timestamp * 1000)
             : new Date(post.creation_timestamp * 1000);
           
-          // NEW: Extract photos from ZIP
+          // Extract photos from ZIP
           const photos = [];
           if (post.media && post.media.length > 0) {
             for (const media of post.media) {

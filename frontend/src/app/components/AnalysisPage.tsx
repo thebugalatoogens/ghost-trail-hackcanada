@@ -444,14 +444,9 @@ const locationMedCount = locations.filter((loc) => loc.severity === "medium").le
 const locationLowCount = locations.filter((loc) => loc.severity === "low").length;
 
 // Add static findings counts
-const findingsHighCount = findings.filter((f) => f.severity === "high").length;
-const findingsMedCount = findings.filter((f) => f.severity === "medium").length;
-const findingsLowCount = findings.filter((f) => f.severity === "low").length;
-
-// Total counts
-const highCount = locationHighCount + findingsHighCount;
-const medCount = locationMedCount + findingsMedCount;
-const lowCount = locationLowCount + findingsLowCount;
+const highCount = locationHighCount;
+const medCount = locationMedCount;
+const lowCount = locationLowCount;
 
   const filtered =
     activeFilter === "all"
@@ -564,7 +559,7 @@ useEffect(() => {
             Your exposure overview
           </h1>
           <p className="text-slate-500" style={{ fontSize: "14px", lineHeight: 1.7 }}>
-            We identified {highCount + medCount + lowCount} areas where your personal information may be accessible to someone you don't know.
+            We identified {locations.length} areas where your personal information may be accessible to someone you don't know.
           </p>
         </div>
 

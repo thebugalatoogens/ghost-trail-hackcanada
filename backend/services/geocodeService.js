@@ -37,13 +37,35 @@ module.exports = geocodeLocation*/
 const axios = require("axios");
 const locationCache = {};
 
+delete locationCache['null'];
+delete locationCache['cn tower'];
+delete locationCache['tower'];
+delete locationCache['landmark'];
+
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function geocodeLocation(input) {
   // normalize to array
-  const candidates = Array.isArray(input) ? input : [input];
+   let candidates = Array.isArray(input) ? input : [input];
+
+  // Improve tag handling for landmarks
+  if (Array.isArray(input)) {
+    // Sort tags by length (longer = more specific)
+    const sortedTags = input
+      .filter(tag => tag && typeof tag === "string" && tag.length > 2)
+      .sort((a, b) => b.length - a.length);
+    
+    candidates = sortedTags.map(tag => {
+      const lower = tag.toLowerCase();
+      // ✅ Add location context for known Canadian landmarks
+      if (lower.includes('cn tower')) return 'CN Tower, Toronto, Canada';
+      if (lower.includes('parliament')) return 'Parliament Hill, Ottawa, Canada';
+      if (lower.includes('niagara')) return 'Niagara Falls, Canada';
+      return tag;
+    });
+  }
 
   for (const locRaw of candidates) {
     if (!locRaw || typeof locRaw !== "string") continue;
