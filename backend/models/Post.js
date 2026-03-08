@@ -12,8 +12,11 @@ const PostSchema = new mongoose.Schema({
 
   longitude: Number,
 
-  timestamp: Date
+  timestamp: Date,
 
+  media: String,
+  
+  autoTags: { type: [String], default: [] }
 })
 
 module.exports = mongoose.model("Post", PostSchema)
