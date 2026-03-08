@@ -302,7 +302,7 @@ function LeafletMap({ locations }: { locations: Location[] }) {
         scrollWheelZoom={false}
       >
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png"
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
           attribution='&copy; <a href="https://carto.com/">CARTO</a>'
         />
         <MapStyler />
@@ -438,9 +438,20 @@ export function AnalysisPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const highCount = findings.filter((f) => f.severity === "high").length;
-  const medCount = findings.filter((f) => f.severity === "medium").length;
-  const lowCount = findings.filter((f) => f.severity === "low").length;
+// Calculate real risk counts from locations
+const locationHighCount = locations.filter((loc) => loc.severity === "high").length;
+const locationMedCount = locations.filter((loc) => loc.severity === "medium").length;
+const locationLowCount = locations.filter((loc) => loc.severity === "low").length;
+
+// Add static findings counts
+const findingsHighCount = findings.filter((f) => f.severity === "high").length;
+const findingsMedCount = findings.filter((f) => f.severity === "medium").length;
+const findingsLowCount = findings.filter((f) => f.severity === "low").length;
+
+// Total counts
+const highCount = locationHighCount + findingsHighCount;
+const medCount = locationMedCount + findingsMedCount;
+const lowCount = locationLowCount + findingsLowCount;
 
   const filtered =
     activeFilter === "all"
@@ -542,7 +553,7 @@ useEffect(() => {
             Your exposure overview
           </h1>
           <p className="text-slate-500" style={{ fontSize: "14px", lineHeight: 1.7 }}>
-            We identified {findings.length} areas where your personal information may be accessible to someone you don't know.
+            We identified {highCount + medCount + lowCount} areas where your personal information may be accessible to someone you don't know.
           </p>
         </div>
 
