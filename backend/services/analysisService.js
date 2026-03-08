@@ -1,28 +1,32 @@
+function getLocationKey(lat, lon) {
+  const roundedLat = lat.toFixed(3)
+  const roundedLon = lon.toFixed(3)
+  return `${roundedLat},${roundedLon}`
+}
+
 function analyzePosts(posts) {
   const locationCounts = {}
   const hourCounts = {}
 
   posts.forEach(post => {
-    if (typeof post.location === "string") {
-      const loc = post.location.toLowerCase().trim()
-      console.log("POST URI:", post.media)
+    if (post.latitude && post.longitude) {
 
-      // ONLY track locations that have valid coordinates
-      if (post.latitude && post.longitude) {
-        if (!locationCounts[loc]) {
-          locationCounts[loc] = {
-            count: 0,
-            latitude: post.latitude,
-            longitude: post.longitude,
-            uris: []
-          }
+      const key = getLocationKey(post.latitude, post.longitude)
+
+      if (!locationCounts[key]) {
+        locationCounts[key] = {
+          location: post.location || null,
+          latitude: post.latitude,
+          longitude: post.longitude,
+          visits: 0,
+          uris: []
         }
+      }
 
-        if (post.media) {
-          locationCounts[loc].uris.push(post.media)
-        }
+      locationCounts[key].visits += 1
 
-        locationCounts[loc].count += 1
+      if (post.media) {
+        locationCounts[key].uris.push(post.media)
       }
     }
 
@@ -32,22 +36,9 @@ function analyzePosts(posts) {
     }
   })
 
-  console.log('locationCounts:', Object.entries(locationCounts))
-  
-  const frequentLocations = Object.entries(locationCounts)
-    .filter(([loc, data]) => data.latitude && data.longitude) // Filter out nulls
-    .map(([loc, data]) => ({
-      location: loc,
-      latitude: data.latitude,
-      longitude: data.longitude,
-      visits: data.count,
-      uris: data.uris
-    }))
+  const frequentLocations = Object.values(locationCounts)
 
-  console.log('frequentLocations to return:', frequentLocations)
-
-  const routineHours = Object.entries(hourCounts)
-    .map(([hour]) => Number(hour))
+  const routineHours = Object.keys(hourCounts).map(Number)
 
   return {
     frequentLocations,
