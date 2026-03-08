@@ -5,6 +5,7 @@ function analyzePosts(posts) {
   posts.forEach(post => {
     if (typeof post.location === "string") {
       const loc = post.location.toLowerCase().trim()
+      console.log("POST URI:", post.media)
 
       // ONLY track locations that have valid coordinates
       if (post.latitude && post.longitude) {
@@ -12,8 +13,13 @@ function analyzePosts(posts) {
           locationCounts[loc] = {
             count: 0,
             latitude: post.latitude,
-            longitude: post.longitude
+            longitude: post.longitude,
+            uris: []
           }
+        }
+
+        if (post.media) {
+          locationCounts[loc].uris.push(post.media)
         }
 
         locationCounts[loc].count += 1
@@ -34,7 +40,8 @@ function analyzePosts(posts) {
       location: loc,
       latitude: data.latitude,
       longitude: data.longitude,
-      visits: data.count
+      visits: data.count,
+      uris: data.uris
     }))
 
   console.log('frequentLocations to return:', frequentLocations)

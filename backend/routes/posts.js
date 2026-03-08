@@ -23,7 +23,8 @@ router.post("/", async (req,res)=>{
     latitude: coords ? coords.latitude : null,
     longitude: coords ? coords.longitude : null,
     timestamp,
-    autoTags
+    autoTags,
+    media: uri
   })
 
   await post.save()
