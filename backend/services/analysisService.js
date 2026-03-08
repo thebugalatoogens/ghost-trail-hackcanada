@@ -26,14 +26,18 @@ function analyzePosts(posts) {
     }
   })
 
+  console.log('locationCounts:', Object.entries(locationCounts))
+  
   const frequentLocations = Object.entries(locationCounts)
-    .filter(([loc, data]) => data.latitude && data.longitude)
+    .filter(([loc, data]) => data.latitude && data.longitude) // Filter out nulls
     .map(([loc, data]) => ({
       location: loc,
       latitude: data.latitude,
       longitude: data.longitude,
       visits: data.count
     }))
+
+  console.log('frequentLocations to return:', frequentLocations)
 
   const routineHours = Object.entries(hourCounts)
     .map(([hour]) => Number(hour))

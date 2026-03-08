@@ -433,6 +433,7 @@ function FindingCard({ finding }: { finding: Finding }) {
 export function AnalysisPage() {
   const navigate = useNavigate();
   const [activeFilter, setActiveFilter] = useState<Severity | "all">("all");
+
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -446,15 +447,15 @@ export function AnalysisPage() {
       ? findings
       : findings.filter((f) => f.severity === activeFilter);
 
-  // Fetch locations from backend
+// Fetch locations from backend
 useEffect(() => {
   async function fetchAnalysis() {
     try {
       setLoading(true);
       
-      // Get userId from localStorage instead of hardcoded 'test-user'
+      // Get userId from localStorage
       const userId = localStorage.getItem('ghostTrailUserId') || 'test-user';
-      console.log('Fetching analysis for userId:', userId); // Debug log
+      console.log('Fetching analysis for userId:', userId);
       
       const response = await fetch(`http://localhost:3000/posts/analyze/${userId}`);
       
@@ -468,46 +469,25 @@ useEffect(() => {
       // Map backend data to frontend format
       if (data.frequentLocations && data.frequentLocations.length > 0) {
         const mappedLocations = data.frequentLocations
-          .filter((loc: any) => loc.latitude && loc.longitude) // Only include locations with valid coords
+          .filter((loc: any) => loc.latitude && loc.longitude)
           .map((loc: any, i: number) => ({
             location: loc.location,
             latitude: loc.latitude,
             longitude: loc.longitude,
             visits: loc.visits,
             severity: getSeverity(loc.visits),
-            // Add hardcoded sample images for now (TODO: replace with Cloudinary)
             images: [sampleImages[i % sampleImages.length]]
           }));
         
         setLocations(mappedLocations);
       } else {
         // Fallback to demo data
-        setLocations([
-          { 
-            location: "SPUR Innovation Centre", 
-            latitude: SPUR_LAT, 
-            longitude: SPUR_LNG, 
-            visits: 8,
-            severity: "medium",
-            images: [sampleImages[0], sampleImages[1]]
-          }
-        ]);
+        setLocations([]);
       }
     } catch (err) {
       console.error('Error fetching analysis:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
-      
-      // Use fallback demo data
-      setLocations([
-        { 
-          location: "SPUR Innovation Centre", 
-          latitude: SPUR_LAT, 
-          longitude: SPUR_LNG, 
-          visits: 8,
-          severity: "medium",
-          images: [sampleImages[0], sampleImages[1]]
-        }
-      ]);
+      setLocations([]);
     } finally {
       setLoading(false);
     }
@@ -515,6 +495,7 @@ useEffect(() => {
 
   fetchAnalysis();
 }, []);
+  // ... your JSX
 
   return (
     <div
