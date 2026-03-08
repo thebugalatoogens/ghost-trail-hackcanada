@@ -1,34 +1,34 @@
-function analyzePosts(posts){
-
+function analyzePosts(posts) {
   const locationCounts = {}
   const hourCounts = {}
 
   posts.forEach(post => {
-
-    if(typeof post.location === "string"){
+    if (typeof post.location === "string") {
       const loc = post.location.toLowerCase().trim()
 
-      if(!locationCounts[loc]){
-        locationCounts[loc] = {
-          count: 0,
-          latitude: post.latitude,
-          longitude: post.longitude
+      // ONLY track locations that have valid coordinates
+      if (post.latitude && post.longitude) {
+        if (!locationCounts[loc]) {
+          locationCounts[loc] = {
+            count: 0,
+            latitude: post.latitude,
+            longitude: post.longitude
+          }
         }
-      }
 
-      locationCounts[loc].count += 1
+        locationCounts[loc].count += 1
+      }
     }
 
-    if(post.timestamp){
+    if (post.timestamp) {
       const hour = new Date(post.timestamp).getHours()
       hourCounts[hour] = (hourCounts[hour] || 0) + 1
     }
-
   })
 
-  console.log(Object.entries(locationCounts))
   const frequentLocations = Object.entries(locationCounts)
-    .map(([loc,data]) => ({
+    .filter(([loc, data]) => data.latitude && data.longitude)
+    .map(([loc, data]) => ({
       location: loc,
       latitude: data.latitude,
       longitude: data.longitude,
@@ -43,7 +43,6 @@ function analyzePosts(posts){
     routineHours,
     riskScore: frequentLocations.length * 20 + routineHours.length * 10
   }
-
 }
 
 module.exports = analyzePosts

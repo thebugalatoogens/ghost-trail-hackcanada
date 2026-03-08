@@ -1,21 +1,102 @@
 import { useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router";
-import { Upload, ArrowRight, Shield, Eye, MapPin, Users } from "lucide-react";
+import { Upload, ArrowRight, Shield, Eye, MapPin, Users, AlertCircle } from "lucide-react";
 import { MapBackground } from "./MapBackground";
+import JSZip from "jszip";
 
 export function HomePage() {
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState("");
+  const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   const handleFile = useCallback(
-    (file: File) => {
-      if (file.name.endsWith(".zip")) {
-        setIsProcessing(true);
+    async (file: File) => {
+      if (!file.name.endsWith(".zip")) {
+        setError("Please upload a ZIP file");
+        return;
+      }
+
+      setIsProcessing(true);
+      setError("");
+      setProgress("Reading ZIP file...");
+
+      try {
+        // 1. Read ZIP file
+        const zip = await JSZip.loadAsync(file);
+        
+        // 2. Find posts.json (Instagram exports have different structures)
+        let postsFile = zip.file("posts_1.json") || 
+                        zip.file("posts.json") ||
+                        zip.file("your_instagram_activity/posts/posts_1.json");
+        
+        if (!postsFile) {
+          throw new Error("Could not find posts.json in ZIP file. Make sure you uploaded an Instagram data export.");
+        }
+
+        setProgress("Parsing posts...");
+        
+        // 3. Parse JSON
+        const postsText = await postsFile.async("text");
+        const posts = JSON.parse(postsText);
+        
+        console.log(`Found ${posts.length} posts`);
+        
+        // 4. Generate userId and SAVE IT to localStorage
+        const userId = "user-" + Date.now();
+        localStorage.setItem('ghostTrailUserId', userId); // ← ADDED
+        
+        let successCount = 0;
+        
+        for (let i = 0; i < posts.length; i++) {
+          const post = posts[i];
+          
+          setProgress(`Processing post ${i + 1}/${posts.length}...`);
+          
+          // Extract location
+          const locationName = post.location?.name || 
+                              post.title?.match(/at (.+)/)?.[1] || 
+                              null;
+          
+          // Only send if has location
+          if (!locationName) continue;
+          
+          // Extract timestamp
+          const timestamp = post.media?.[0]?.creation_timestamp 
+            ? new Date(post.media[0].creation_timestamp * 1000)
+            : new Date(post.creation_timestamp * 1000);
+          
+          // Send to backend
+          try {
+            await fetch('http://localhost:3000/posts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: userId,
+                caption: post.title || "",
+                location: locationName,
+                timestamp: timestamp.toISOString()
+              })
+            });
+            successCount++;
+          } catch (err) {
+            console.error('Failed to send post:', err);
+          }
+        }
+        
+        setProgress(`Analysis complete! Processed ${successCount} posts with locations.`);
+        
+        // 5. Navigate to analysis page
         setTimeout(() => {
           navigate("/analysis");
-        }, 1800);
+        }, 1000);
+        
+      } catch (err) {
+        console.error('Error processing ZIP:', err);
+        setError(err instanceof Error ? err.message : 'Failed to process ZIP file');
+        setIsProcessing(false);
       }
     },
     [navigate]
@@ -80,7 +161,7 @@ export function HomePage() {
         {/* Nav */}
         <nav className="absolute top-0 left-0 right-0 flex items-center justify-between px-8 py-6 z-10">
           <div className="flex items-center gap-2.5">
-            <img src="/GhostTrailLogo.svg" alt="Ghost Trail" className="w-5 h-5" />
+            <Shield className="w-5 h-5 text-slate-400" strokeWidth={1.5} />
             <span
               className="tracking-[0.2em] text-slate-300 uppercase"
               style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "13px", letterSpacing: "0.2em" }}
@@ -88,6 +169,8 @@ export function HomePage() {
               Ghost Trail
             </span>
           </div>
+          
+          
           <a
             href="#how-it-works"
             className="text-slate-500 hover:text-slate-300 transition-colors"
@@ -139,7 +222,7 @@ export function HomePage() {
             onDrop={handleDrop}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => !isProcessing && fileInputRef.current?.click()}
           >
             {isProcessing ? (
               <div className="flex flex-col items-center gap-4">
@@ -148,7 +231,7 @@ export function HomePage() {
                   style={{ borderRadius: "50%" }}
                 />
                 <p className="text-slate-400" style={{ fontSize: "14px" }}>
-                  Processing your data...
+                  {progress}
                 </p>
               </div>
             ) : (
@@ -171,8 +254,17 @@ export function HomePage() {
               accept=".zip"
               className="hidden"
               onChange={handleInputChange}
+              disabled={isProcessing}
             />
           </div>
+
+          {/* Error message */}
+          {error && (
+            <div className="mt-4 mx-auto max-w-md p-4 bg-red-400/10 border border-red-400/20 rounded flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+              <p className="text-red-400 text-sm text-left">{error}</p>
+            </div>
+          )}
 
           {/* Skip link for demo */}
           <button
@@ -319,7 +411,7 @@ export function HomePage() {
       <footer className="border-t border-slate-800/60 bg-[#0a0f1a] px-8 py-8">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src="/GhostTrailLogo.svg" alt="Ghost Trail" className="w-5 h-5" />
+            <Shield className="w-4 h-4 text-slate-700" strokeWidth={1.5} />
             <span
               className="text-slate-700 uppercase tracking-[0.15em]"
               style={{ fontSize: "11px" }}

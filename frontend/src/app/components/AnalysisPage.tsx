@@ -33,6 +33,15 @@ interface Finding {
   recommendation: string;
 }
 
+interface Location {
+  location: string;
+  latitude: number;
+  longitude: number;
+  visits: number;
+  severity: Severity;
+  images?: string[];
+}
+
 const findings: Finding[] = [
   {
     id: "location",
@@ -175,7 +184,7 @@ const severityConfig: Record<Severity, { label: string; color: string; bg: strin
 const SPUR_LAT = 43.4725;
 const SPUR_LNG = -80.5423;
 
-// HARDCODED SAMPLE IMAGES - Replace with real images from Instagram ZIP
+// HARDCODED SAMPLE IMAGES - Will be replaced with Cloudinary images later
 const sampleImages = [
   "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=400",
   "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=400",
@@ -184,62 +193,18 @@ const sampleImages = [
   "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400",
 ];
 
-const geotaggedLocations = [
-  { 
-    lat: SPUR_LAT, 
-    lng: SPUR_LNG, 
-    label: "SPUR Innovation Centre", 
-    severity: "high" as Severity, 
-    count: 8,
-    images: [sampleImages[0], sampleImages[1], sampleImages[2]]
-  },
-  { 
-    lat: 43.4701, 
-    lng: -80.5412, 
-    label: "Nearby Café", 
-    severity: "medium" as Severity, 
-    count: 3,
-    images: [sampleImages[3]]
-  },
-  { 
-    lat: 43.4748, 
-    lng: -80.5478, 
-    label: "Gym", 
-    severity: "low" as Severity, 
-    count: 5,
-    images: [sampleImages[4], sampleImages[0]]
-  },
-  { 
-    lat: 43.4689, 
-    lng: -80.5501, 
-    label: "Home Area", 
-    severity: "high" as Severity, 
-    count: 12,
-    images: [sampleImages[1], sampleImages[2], sampleImages[3], sampleImages[4]]
-  },
-  { 
-    lat: 43.4762, 
-    lng: -80.5388, 
-    label: "Work Area", 
-    severity: "high" as Severity, 
-    count: 9,
-    images: [sampleImages[2], sampleImages[4]]
-  },
-  { 
-    lat: 43.4715, 
-    lng: -80.5530, 
-    label: "Restaurant", 
-    severity: "low" as Severity, 
-    count: 2,
-    images: [sampleImages[3]]
-  },
-];
-
 const markerColor: Record<Severity, string> = {
   high: "#ef4444",
   medium: "#f59e0b",
   low: "#64748b",
 };
+
+// Determine severity based on visit count
+function getSeverity(visits: number): Severity {
+  if (visits >= 10) return "high";
+  if (visits >= 5) return "medium";
+  return "low";
+}
 
 function MapStyler() {
   const map = useMap();
@@ -249,7 +214,7 @@ function MapStyler() {
   return null;
 }
 
-// Image carousel component for popup
+// Image carousel component
 function ImageCarousel({ images }: { images: string[] }) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -276,7 +241,6 @@ function ImageCarousel({ images }: { images: string[] }) {
       
       {images.length > 1 && (
         <>
-          {/* Navigation buttons */}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -296,7 +260,6 @@ function ImageCarousel({ images }: { images: string[] }) {
             <ChevronRight size={16} color="white" />
           </button>
 
-          {/* Image counter */}
           <div className="absolute bottom-1 right-1 bg-black/60 px-2 py-0.5 rounded text-xs text-white">
             {currentIndex + 1} / {images.length}
           </div>
@@ -306,39 +269,58 @@ function ImageCarousel({ images }: { images: string[] }) {
   );
 }
 
-function LeafletMap() {
+function LeafletMap({ locations }: { locations: Location[] }) {
+  // Don't render map if no valid locations
+  if (!locations || locations.length === 0 || !locations[0]?.latitude || !locations[0]?.longitude) {
+    return (
+      <div 
+        className="border border-slate-800/60 flex items-center justify-center" 
+        style={{ borderRadius: "2px", height: "380px", background: "#0d1424" }}
+      >
+        <p className="text-slate-500">No location data available</p>
+      </div>
+    );
+  }
+
+  const mapCenter = [locations[0].latitude, locations[0].longitude] as [number, number];
+
   return (
     <div
       className="border border-slate-800/60 overflow-hidden relative"
       style={{ borderRadius: "2px", height: "380px" }}
     >
       <MapContainer
-        center={[SPUR_LAT, SPUR_LNG]}
+        center={mapCenter}
         zoom={15}
-        style={{ height: "100%", width: "100%", background: "#0d1424" }}
+        style={{ 
+          height: "100%", 
+          width: "100%", 
+          background: "#0d1424",
+          filter: "brightness(1.3) contrast(1.1)"
+        }}
         zoomControl={true}
         scrollWheelZoom={false}
       >
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          url="https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png"
           attribution='&copy; <a href="https://carto.com/">CARTO</a>'
         />
         <MapStyler />
-        {geotaggedLocations.map((loc, i) => (
+        {locations.map((loc, i) => (
           <CircleMarker
             key={i}
-            center={[loc.lat, loc.lng]}
-            radius={loc.count + 6}
+            center={[loc.latitude, loc.longitude]}
+            radius={loc.visits + 8}
             pathOptions={{
               color: markerColor[loc.severity],
               fillColor: markerColor[loc.severity],
-              fillOpacity: 0.35,
-              weight: 1.5,
+              fillOpacity: 0.6,
+              weight: 2.5,
             }}
           >
             <Popup maxWidth={250} minWidth={200}>
               <div style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", color: "#cbd5e1" }}>
-                {/* Images */}
+                {/* Images - hardcoded for now */}
                 {loc.images && loc.images.length > 0 && (
                   <div className="mb-2">
                     <ImageCarousel images={loc.images} />
@@ -347,11 +329,11 @@ function LeafletMap() {
                 
                 {/* Location info */}
                 <strong style={{ color: markerColor[loc.severity], fontSize: "13px" }}>
-                  {loc.label}
+                  {loc.location}
                 </strong>
                 <br />
                 <span style={{ color: "#94a3b8", fontSize: "11px" }}>
-                  {loc.count} posts tagged here
+                  {loc.visits} posts tagged here
                 </span>
               </div>
             </Popup>
@@ -370,15 +352,15 @@ function LeafletMap() {
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 bg-red-400 block" style={{ borderRadius: "50%" }} />
-            <span className="text-slate-400" style={{ fontSize: "11px" }}>High frequency (home / work)</span>
+            <span className="text-slate-400" style={{ fontSize: "11px" }}>High frequency (10+ posts)</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 bg-amber-400 block" style={{ borderRadius: "50%" }} />
-            <span className="text-slate-400" style={{ fontSize: "11px" }}>Moderate frequency</span>
+            <span className="text-slate-400" style={{ fontSize: "11px" }}>Moderate frequency (5-9 posts)</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 bg-slate-500 block" style={{ borderRadius: "50%" }} />
-            <span className="text-slate-400" style={{ fontSize: "11px" }}>Occasional</span>
+            <span className="text-slate-400" style={{ fontSize: "11px" }}>Occasional (1-4 posts)</span>
           </div>
         </div>
       </div>
@@ -451,6 +433,9 @@ function FindingCard({ finding }: { finding: Finding }) {
 export function AnalysisPage() {
   const navigate = useNavigate();
   const [activeFilter, setActiveFilter] = useState<Severity | "all">("all");
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const highCount = findings.filter((f) => f.severity === "high").length;
   const medCount = findings.filter((f) => f.severity === "medium").length;
@@ -460,6 +445,76 @@ export function AnalysisPage() {
     activeFilter === "all"
       ? findings
       : findings.filter((f) => f.severity === activeFilter);
+
+  // Fetch locations from backend
+useEffect(() => {
+  async function fetchAnalysis() {
+    try {
+      setLoading(true);
+      
+      // Get userId from localStorage instead of hardcoded 'test-user'
+      const userId = localStorage.getItem('ghostTrailUserId') || 'test-user';
+      console.log('Fetching analysis for userId:', userId); // Debug log
+      
+      const response = await fetch(`http://localhost:3000/posts/analyze/${userId}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch analysis');
+      }
+      
+      const data = await response.json();
+      console.log('Backend data:', data);
+      
+      // Map backend data to frontend format
+      if (data.frequentLocations && data.frequentLocations.length > 0) {
+        const mappedLocations = data.frequentLocations
+          .filter((loc: any) => loc.latitude && loc.longitude) // Only include locations with valid coords
+          .map((loc: any, i: number) => ({
+            location: loc.location,
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+            visits: loc.visits,
+            severity: getSeverity(loc.visits),
+            // Add hardcoded sample images for now (TODO: replace with Cloudinary)
+            images: [sampleImages[i % sampleImages.length]]
+          }));
+        
+        setLocations(mappedLocations);
+      } else {
+        // Fallback to demo data
+        setLocations([
+          { 
+            location: "SPUR Innovation Centre", 
+            latitude: SPUR_LAT, 
+            longitude: SPUR_LNG, 
+            visits: 8,
+            severity: "medium",
+            images: [sampleImages[0], sampleImages[1]]
+          }
+        ]);
+      }
+    } catch (err) {
+      console.error('Error fetching analysis:', err);
+      setError(err instanceof Error ? err.message : 'Unknown error');
+      
+      // Use fallback demo data
+      setLocations([
+        { 
+          location: "SPUR Innovation Centre", 
+          latitude: SPUR_LAT, 
+          longitude: SPUR_LNG, 
+          visits: 8,
+          severity: "medium",
+          images: [sampleImages[0], sampleImages[1]]
+        }
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  fetchAnalysis();
+}, []);
 
   return (
     <div
@@ -541,12 +596,31 @@ export function AnalysisPage() {
           </div>
         </div>
 
-        {/* Leaflet Map */}
+        {/* Map */}
         <div className="mb-10">
           <p className="text-slate-600 uppercase tracking-[0.25em] mb-4" style={{ fontSize: "11px" }}>
             Location Exposure Map
           </p>
-          <LeafletMap />
+          
+          {loading ? (
+            <div 
+              className="border border-slate-800/60 flex items-center justify-center" 
+              style={{ borderRadius: "2px", height: "380px" }}
+            >
+              <p className="text-slate-500">Loading map data...</p>
+            </div>
+          ) : (
+            <>
+              {error && (
+                <div className="mb-2 p-3 bg-amber-400/10 border border-amber-400/20 rounded">
+                  <p className="text-amber-400 text-xs">
+                    Using demo data ({error})
+                  </p>
+                </div>
+              )}
+              <LeafletMap locations={locations} />
+            </>
+          )}
         </div>
 
         {/* Findings list */}
